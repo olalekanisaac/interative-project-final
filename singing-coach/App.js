@@ -4,6 +4,10 @@ import Appnavigate from './AppNavigation/Appnavigate'; // Import the Appnavigate
 import SplashScreenView from './SplashScreenView';
 import { NavigationContainer } from '@react-navigation/native';
 import TabHolder from './Screen/TabHolder';
+import FlaskChecking from './Screen/FlaskChecking';
+
+
+
 
 const App = () => {
   const [isShowSplash, setisShowSplash] = useState(true);
@@ -25,6 +29,7 @@ const App = () => {
        <NavigationContainer>
         <TabHolder/>
        </NavigationContainer>
+      // <FlaskChecking/>
        
       )}
     </SafeAreaView>

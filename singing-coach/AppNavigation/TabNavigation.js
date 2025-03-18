@@ -38,11 +38,12 @@ export default function TabNavigation() {
             backgroundColor: "black",
             paddingBottom: 5,
             height: 80,
+            
           },
         })}
       >
-        <Tab.Screen name="Recording" component={RecordingScreen} />
-        <Tab.Screen name="Feedback" component={FeedbackScreen} />
+        <Tab.Screen name="Feedback" component={FeedbackScreen} options={{ headerShown: false }} />
+        <Tab.Screen name="Recording" component={RecordingScreen}  options={{ headerShown: false }} />
         <Tab.Screen name="Library" component={LibraryScreen} />
         <Tab.Screen name="Profile" component={ProfileScreen} />
       </Tab.Navigator>
