@@ -30,6 +30,7 @@ const App = () => {
         <TabHolder/>
        </NavigationContainer>
       // <FlaskChecking/>
+     
        
       )}
     </SafeAreaView>

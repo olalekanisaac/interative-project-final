@@ -16,10 +16,10 @@ import FeedbackScreen from '../Screen/FeedbackScreen';
 
 const Stack = createNativeStackNavigator();
 
-const Appnavigate = ({initialRouteName}) => {
+const Appnavigate = () => {
   return (
     <NavigationContainer>
-    <Stack.Navigator initialRouteName={initialRouteName}>
+    <Stack.Navigator initialRouteName="RecordingScreen">
       <Stack.Screen name="OnboardingScreen" component={OnboardingScreen} options={{ headerShown: false }} />
       <Stack.Screen name="WelcomeScreen" component={WelcomeScreen} options={{ headerShown: false }} />
       <Stack.Screen name="SignIn" component={SignIn} options={{ headerShown: false }} />
