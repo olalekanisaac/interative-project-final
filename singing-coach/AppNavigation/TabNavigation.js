@@ -44,8 +44,8 @@ export default function TabNavigation() {
       >
         <Tab.Screen name="Feedback" component={FeedbackScreen} options={{ headerShown: false }} />
         <Tab.Screen name="Recording" component={RecordingScreen}  options={{ headerShown: false }} />
-        <Tab.Screen name="Library" component={LibraryScreen} />
-        <Tab.Screen name="Profile" component={ProfileScreen} />
+        <Tab.Screen name="Library" component={LibraryScreen} options={{ headerShown: false }} />
+        <Tab.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
       </Tab.Navigator>
     
   );
