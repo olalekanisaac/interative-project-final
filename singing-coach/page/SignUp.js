@@ -2,22 +2,42 @@ import React, { useState } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, Image } from 'react-native';
 import { Card, Button } from 'react-native-elements';
 import { FontAwesome5 } from '@expo/vector-icons';
+import supabase from '../Supabase/SupabaseClient'; // 
 
-const SignUp = ({navigation}) => {
+const SignUp = ({ navigation }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  const handleSignUp = () => {
-    // Handle sign-up logic here
+  const handleSignUp = async () => {
+    if (password !== confirmPassword) {
+      alert('Passwords do not match');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (error) {
+        alert(error.message);
+      } else {
+        const user = data.user;
+        alert('Sign up successful');
+        navigation.navigate('SignIn');
+      }
+    } catch (error) {
+      console.error('Error during sign-up:', error);
+    }
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.logoContainer}>
         <Image source={require('../Image/sf.png')} style={styles.image} />
-        {/* <Text style={styles.logo}>SF</Text> */}
       </View>
       <Card containerStyle={styles.card}>
         <TextInput
@@ -46,9 +66,7 @@ const SignUp = ({navigation}) => {
           value={confirmPassword}
           onChangeText={setConfirmPassword}
         />
-        <Button title="Sign Up" buttonStyle={styles.signUpButton} onPress={handleSignUp}
-        
-        />
+        <Button title="Sign Up" buttonStyle={styles.signUpButton} onPress={handleSignUp} />
       </Card>
       <View style={styles.socialLoginContainer}>
         <Text style={styles.socialLoginText}>or Sign up with</Text>
@@ -82,11 +100,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
-  logo: {
-    fontSize: 30,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
   image: {
     width: 200,
     height: 150,
@@ -104,7 +117,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 10,
     padding: 10,
-    color: '#fff',
+    color: 'black',
   },
   signUpButton: {
     backgroundColor: '#2ecc71',

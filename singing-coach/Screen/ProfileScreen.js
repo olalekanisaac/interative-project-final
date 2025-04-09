@@ -1,21 +1,41 @@
-
-import React from 'react';
-import { StyleSheet, Text, View, Image, TouchableOpacity, ScrollView } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import React, { useEffect, useState } from 'react';
+import {StyleSheet,Text,View,Image,ScrollView,} from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ProfileScreen = () => {
+  const [selectedInterests, setSelectedInterests] = useState([]);
+  const [email, setEmail] = useState('');
+  const [selectedLevel, setSelectedLevel] = useState('');
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const level = await AsyncStorage.getItem('selectedLevel');
+        const userEmail = await AsyncStorage.getItem('userEmail');
+        const interests = await AsyncStorage.getItem('selectedInterests');
+
+        setSelectedLevel(level || '');
+        setEmail(userEmail || '');
+        if (interests) setSelectedInterests(JSON.parse(interests));
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
   return (
     <ScrollView style={styles.container}>
-      {/* Header with background gradient */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
-          <Image 
-            // source={{ uri: 'https://randomuser.me/api/portraits/men/21.jpg' }} 
+          <Image
             style={styles.avatar}
+            source={require('../Image/11539820.png')}
           />
-          <Text style={styles.name}>Michael Johnson</Text>
-          <Text style={styles.subtitle}>Piano Enthusiast</Text>
-          
+          <Text style={styles.name}>{email}</Text>
+          <Text style={styles.subtitle}></Text>
+
           <View style={styles.statsContainer}>
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>42</Text>
@@ -33,88 +53,28 @@ const ProfileScreen = () => {
         </View>
       </View>
 
-      {/* Progress Section */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Your Progress</Text>
-        <View style={styles.progressCard}>
-          <View style={styles.progressRow}>
-            <Ionicons name="musical-notes" size={24} color="#1db954" />
-            <View style={styles.progressTextContainer}>
-              <Text style={styles.progressTitle}>Note Accuracy</Text>
-              <Text style={styles.progressSubtitle}>75% accuracy on average</Text>
-            </View>
-          </View>
-          <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: '75%' }]} />
-          </View>
-        </View>
+        <Text style={styles.sectionTitle}>Your Level</Text>
+        <Text style={styles.levelText}>{selectedLevel || 'Not set'}</Text>
+      </View>
 
-        <View style={styles.progressCard}>
-          <View style={styles.progressRow}>
-            <Ionicons name="time-outline" size={24} color="#1db954" />
-            <View style={styles.progressTextContainer}>
-              <Text style={styles.progressTitle}>Practice Time</Text>
-              <Text style={styles.progressSubtitle}>3.5 hours this week</Text>
-            </View>
-          </View>
-          <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: '60%' }]} />
-          </View>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Your Interests</Text>
+        <View style={styles.interestsList}>
+          {selectedInterests.length > 0 ? (
+            selectedInterests.map((interest, index) => (
+              <View key={index} style={styles.interestTag}>
+                <Text style={styles.interestTagText}>{interest}</Text>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.interestTagText}>No interests selected</Text>
+          )}
         </View>
       </View>
-
-      {/* Recent Activity */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Recent Activity</Text>
-        
-        <TouchableOpacity style={styles.activityCard}>
-          <View style={styles.activityIconContainer}>
-            <Ionicons name="mic-outline" size={24} color="#fff" />
-          </View>
-          <View style={styles.activityContent}>
-            <Text style={styles.activityTitle}>C Major Scale</Text>
-            <Text style={styles.activitySubtitle}>Yesterday • 10 min session</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={22} color="#666" />
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.activityCard}>
-          <View style={styles.activityIconContainer}>
-            <Ionicons name="mic-outline" size={24} color="#fff" />
-          </View>
-          <View style={styles.activityContent}>
-            <Text style={styles.activityTitle}>G Minor Chord</Text>
-            <Text style={styles.activitySubtitle}>2 days ago • 15 min session</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={22} color="#666" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Actions */}
-      <View style={styles.actionsContainer}>
-        <TouchableOpacity style={styles.actionButton}>
-          <Ionicons name="settings-outline" size={24} color="#fff" />
-          <Text style={styles.actionText}>Settings</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.actionButton}>
-          <Ionicons name="help-circle-outline" size={24} color="#fff" />
-          <Text style={styles.actionText}>Help</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.actionButton}>
-          <Ionicons name="share-social-outline" size={24} color="#fff" />
-          <Text style={styles.actionText}>Share</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Bottom spacing */}
-      <View style={styles.bottomPadding} />
     </ScrollView>
   );
 };
-
-export default ProfileScreen;
 
 const styles = StyleSheet.create({
   container: {
@@ -138,12 +98,9 @@ const styles = StyleSheet.create({
     paddingTop: 40,
   },
   avatar: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    borderWidth: 4,
-    borderColor: '#1db954',
-    marginBottom: 15,
+    width: 150,
+  height: 150,
+  marginBottom: 15,
   },
   name: {
     fontSize: 24,
@@ -275,4 +232,36 @@ const styles = StyleSheet.create({
   bottomPadding: {
     height: 40,
   },
+
+  levelText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 15,
+  },
+  interestsList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  
+  interestTag: {
+    backgroundColor: '#1db95433',
+    borderColor: '#1db954',
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    marginBottom: 8,
+  },
+  
+  interestTagText: {
+    color: '#fff',
+    fontSize: 14,
+  }
+  
 });
+
+export default ProfileScreen;
+
+

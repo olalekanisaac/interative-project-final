@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
-
+import { StyleSheet, View, Text, TouchableOpacity, } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 const LevelSelectionScreen = ({ navigation }) => {
   const [selectedLevel, setSelectedLevel] = useState('');
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (selectedLevel) {
-      // Navigate or handle selection
+      // Save the selected level to AsyncStorage
+      await AsyncStorage.setItem('selectedLevel', selectedLevel);
       console.log(`Selected Level: ${selectedLevel}`);
       navigation.navigate('ChooseInterestsScreen'); // Replace 'NextScreen' with the actual screen name
-  
     } else {
       alert('Please select a level to proceed.');
     }
@@ -123,8 +123,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderColor: 'black',
     borderWidth: 1,
-
-
+  
+  
   },
   navButtonText: {
     color: 'white',
@@ -133,3 +133,4 @@ const styles = StyleSheet.create({
 });
 
 export default LevelSelectionScreen;
+

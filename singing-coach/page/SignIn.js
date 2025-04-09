@@ -1,26 +1,64 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity,Image } from 'react-native';
+import { StyleSheet, View, Text, TextInput, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import { Card, Button } from 'react-native-elements';
-import { FontAwesome5 } from '@expo/vector-icons'; 
+import { FontAwesome5 } from '@expo/vector-icons';
+import supabase from '../Supabase/SupabaseClient'; // Import Supabase client
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false); // Track loading state
+  const [showPassword, setShowPassword] = useState(false);
 
-  const handleLogin = () => {
-    // Handle login logic here
+  const handleLogin = async () => {
+    setLoading(true); // Start loading
+  
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+  
+      if (error) {
+        setLoading(false);
+        alert(error.message);
+      } else {
+        // ✅ Save the user's email to AsyncStorage
+        await AsyncStorage.setItem('userEmail', email);
+
+        // ✅ Save the user's email to Supabase
+        const { data: userData, error: insertError } = await supabase
+          .from('user_library') // Assuming the table is user_library
+          .upsert([{
+            user_email: email,
+          }]);
+
+        if (insertError) {
+          alert('Error saving email to Supabase');
+          console.error(insertError);
+        }
+
+        setLoading(false);
+        alert('Login successful');
+        navigation.navigate('LevelSelectionScreen');
+      }
+    } catch (error) {
+      setLoading(false);
+      console.error('Error during login:', error);
+      alert('An error occurred while logging in');
+    }
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.logoContainer}>
         <Image source={require('../Image/sf.png')} style={styles.image} />
-        {/* <Text style={styles.logo}>Singing Feedback</Text> */}
       </View>
       <Card containerStyle={styles.card}>
         <TextInput
           style={styles.input}
-          placeholder="Email or Username"
+          placeholder="Email"
           value={email}
           onChangeText={setEmail}
         />
@@ -28,12 +66,12 @@ const LoginScreen = ({ navigation }) => {
           <TextInput
             style={styles.input}
             placeholder="Password"
-            secureTextEntry
+            secureTextEntry={!showPassword}
             value={password}
             onChangeText={setPassword}
           />
-          <TouchableOpacity style={styles.eyeButton}>
-            <FontAwesome5 name="eye" size={20} color="gray" /> 
+          <TouchableOpacity style={styles.eyeButton} onPress={() => setShowPassword(!showPassword)}>
+            <FontAwesome5 name={showPassword ? "eye-slash" : "eye"} size={20} color="gray" />
           </TouchableOpacity>
         </View>
         <View style={styles.rememberContainer}>
@@ -44,7 +82,13 @@ const LoginScreen = ({ navigation }) => {
             <Text style={styles.forgotText}>Forgot Password?</Text>
           </TouchableOpacity>
         </View>
-        <Button title="Sign In" buttonStyle={styles.loginButton} onPress={() => navigation.navigate('LevelSelectionScreen')}/>
+        <Button
+          title={loading ? "Signing In..." : "Sign In"}
+          buttonStyle={styles.loginButton}
+          onPress={handleLogin}
+          disabled={loading} // Disable button while loading
+        />
+        {loading && <ActivityIndicator size="small" color="#2ecc71" style={styles.loader} />}
       </Card>
       <View style={styles.socialLoginContainer}>
         <Text style={styles.socialLoginText}>or Sign in with</Text>
@@ -70,23 +114,16 @@ const LoginScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#181818', // Dark background color
+    backgroundColor: '#181818',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  logoContainer: {
-
-  },
-  logo: {
-    fontSize: 30,
-    fontWeight: 'bold',
-    color: '#fff', 
-  },
-  image:{
-    width: 200, // Adjust width and height as needed
+  logoContainer: {},
+  image: {
+    width: 200,
     height: 150,
     marginBottom: 40,
-    resizeMode:'contain'
+    resizeMode: 'contain',
   },
   card: {
     width: '80%',
@@ -95,11 +132,11 @@ const styles = StyleSheet.create({
   },
   input: {
     height: 40,
-    borderColor: '#fff', 
+    borderColor: '#fff',
     borderWidth: 1,
     marginBottom: 10,
     padding: 10,
-    color: '#fff', 
+    color: 'black',
   },
   inputContainer: {
     flexDirection: 'row',
@@ -114,21 +151,24 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   rememberText: {
-    color: '#fff', 
+    color: '#fff',
   },
   forgotText: {
-    color: '#fff', 
+    color: '#fff',
   },
   loginButton: {
-    backgroundColor: '#2ecc71', // Green button color
+    backgroundColor: '#2ecc71',
     borderRadius: 5,
+  },
+  loader: {
+    marginTop: 10,
   },
   socialLoginContainer: {
     marginTop: 20,
     alignItems: 'center',
   },
   socialLoginText: {
-    color: '#fff', 
+    color: '#fff',
     marginBottom: 10,
   },
   socialButtonsContainer: {
@@ -145,10 +185,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   registerText: {
-    color: '#fff', 
+    color: '#fff',
   },
   registerButtonText: {
-    color: '#2ecc71', 
+    color: '#2ecc71',
     fontWeight: 'bold',
   },
 });

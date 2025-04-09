@@ -1,37 +1,47 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, SafeAreaView, Text, View } from 'react-native';
-import Appnavigate from './AppNavigation/Appnavigate'; // Import the Appnavigate component
+import { SafeAreaView, StyleSheet } from 'react-native';
+import { supabase } from './Supabase/SupabaseClient';
+import Appnavigate from './AppNavigation/Appnavigate';
 import SplashScreenView from './SplashScreenView';
-import { NavigationContainer } from '@react-navigation/native';
-import TabHolder from './Screen/TabHolder';
-import FlaskChecking from './Screen/FlaskChecking';
-
-
-
 
 const App = () => {
-  const [isShowSplash, setisShowSplash] = useState(true);
+  const [isShowSplash, setIsShowSplash] = useState(true);
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
+    const initializeApp = async () => {
+      try {
+        console.log("Fetching session from Supabase...");
+        const { data: { session }, error } = await supabase.auth.getSession();
+  
+        if (error) {
+          console.log("Error fetching session:", error.message);
+        } else {
+          console.log("Session fetched:", session);
+        }
+  
+        setUser(session?.user || null);
+        setIsShowSplash(false);
+      } catch (e) {
+        console.log("Exception while initializing app:", e);
+        setIsShowSplash(false); // Still proceed to app even if there's an error
+      }
+    };
+  
     const timer = setTimeout(() => {
-      setisShowSplash(false);
-    }, 2000); // Delay of 2 seconds for splash screen
-
+      initializeApp();
+    }, 2000);
+  
     return () => clearTimeout(timer);
   }, []);
+  
 
   return (
     <SafeAreaView style={styles.container}>
       {isShowSplash ? (
-        <SplashScreenView /> // Your Splash Screen component
+        <SplashScreenView />
       ) : (
-        
-       <NavigationContainer>
-        <TabHolder/>
-       </NavigationContainer>
-      // <FlaskChecking/>
-     
-       
+        <Appnavigate user={user} />
       )}
     </SafeAreaView>
   );

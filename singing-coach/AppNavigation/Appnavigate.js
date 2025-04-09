@@ -12,14 +12,13 @@ import RecordingScreen from '../Screen/RecordingScreen';
 import TabHolder from '../Screen/TabHolder';
 import ProfileScreen from '../Screen/ProfileScreen';
 import FeedbackScreen from '../Screen/FeedbackScreen';
-
+import LibraryScreen from '../Screen/LibraryScreen';
 
 const Stack = createNativeStackNavigator();
-
 const Appnavigate = () => {
   return (
     <NavigationContainer>
-    <Stack.Navigator initialRouteName="RecordingScreen">
+    <Stack.Navigator initialRouteName="OnboardingScreen">
       <Stack.Screen name="OnboardingScreen" component={OnboardingScreen} options={{ headerShown: false }} />
       <Stack.Screen name="WelcomeScreen" component={WelcomeScreen} options={{ headerShown: false }} />
       <Stack.Screen name="SignIn" component={SignIn} options={{ headerShown: false }} />
@@ -32,10 +31,7 @@ const Appnavigate = () => {
       <Stack.Screen name="LibraryScreen" component={LibraryScreen} options={{ headerShown: false }} />
       <Stack.Screen name="ProfileScreen" component={ProfileScreen} options={{ headerShown: false }} />
 
-
-
-
-
+      
       <Stack.Screen name="BodyPic" component={BodyPic} options={{ headerShown: false }} />
 
     </Stack.Navigator>

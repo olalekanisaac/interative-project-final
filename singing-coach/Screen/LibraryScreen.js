@@ -1,48 +1,51 @@
-
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View, Image, TouchableOpacity, ScrollView, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import supabase  from '../Supabase/SupabaseClient'; // Import your supabase client
 
 const LibraryScreen = () => {
-  // Sample data for library items
-  const libraryItems = [
-    { id: '1', title: 'C Major Scale', date: '2 days ago', duration: '10 min', icon: 'musical-notes' },
-    { id: '2', title: 'G Minor Chord', date: '3 days ago', duration: '15 min', icon: 'musical-notes' },
-    { id: '3', title: 'F# Pentatonic', date: '1 week ago', duration: '20 min', icon: 'musical-notes' },
-    { id: '4', title: 'D Dorian Mode', date: '1 week ago', duration: '12 min', icon: 'musical-notes' },
-    { id: '5', title: 'A Minor Scale', date: '2 weeks ago', duration: '18 min', icon: 'musical-notes' },
-    { id: '6', title: 'E Blues Scale', date: '3 weeks ago', duration: '25 min', icon: 'musical-notes' },
-  ];
+  const [libraryItems, setLibraryItems] = useState([]); // To store fetched library items
 
-  // Sample data for categories
-  const categories = [
-    { id: '1', title: 'Recent', icon: 'time-outline' },
-    { id: '2', title: 'Scales', icon: 'list-outline' },
-    { id: '3', title: 'Chords', icon: 'grid-outline' },
-    { id: '4', title: 'Favorites', icon: 'heart-outline' },
-  ];
+  useEffect(() => {
+    const fetchLibraryItems = async () => {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+  
+      if (user) {
+        const { data, error } = await supabase
+          .from('user_library')
+          .select('*')
+          .eq('user_email', user.email) // Correct filter
+  
+        if (error) {
+          console.error('Error fetching library items:', error);
+        } else {
+          setLibraryItems(data);
+        }
+      } else if (userError) {
+        console.error('User fetch error:', userError);
+      }
+    };
+  
+    fetchLibraryItems();
+  }, []);
+  
 
   const renderLibraryItem = ({ item }) => (
     <TouchableOpacity style={styles.libraryCard}>
       <View style={styles.libraryIconContainer}>
-        <Ionicons name={item.icon} size={24} color="#fff" />
+        <Ionicons name="musical-notes" size={24} color="#fff" />
       </View>
       <View style={styles.libraryContent}>
-        <Text style={styles.libraryTitle}>{item.title}</Text>
-        <Text style={styles.librarySubtitle}>{item.date} • {item.duration}</Text>
+        <Text style={styles.libraryTitle}>Key: {item.musical_key || "N/A"}</Text>
+        <Text style={styles.librarySubtitle}>{item.feedback || "No feedback"}</Text>
       </View>
       <Ionicons name="play-circle-outline" size={28} color="#1db954" />
     </TouchableOpacity>
   );
-
-  const renderCategoryItem = ({ item }) => (
-    <TouchableOpacity style={styles.categoryCard}>
-      <View style={styles.categoryIconContainer}>
-        <Ionicons name={item.icon} size={22} color="#1db954" />
-      </View>
-      <Text style={styles.categoryTitle}>{item.title}</Text>
-    </TouchableOpacity>
-  );
+  
 
   return (
     <ScrollView style={styles.container}>
@@ -50,7 +53,6 @@ const LibraryScreen = () => {
       <View style={styles.header}>
         <View style={styles.headerContent}>
           <Image 
-            // source={{ uri: 'https://randomuser.me/api/portraits/men/21.jpg' }} 
             style={styles.avatar}
           />
           <View style={styles.userInfo}>
@@ -69,17 +71,6 @@ const LibraryScreen = () => {
         <Ionicons name="search-outline" size={20} color="#666" style={styles.searchIcon} />
         <Text style={styles.searchPlaceholder}>Search your library</Text>
       </View>
-
-      {/* Categories */}
-      <Text style={styles.sectionTitle}>Categories</Text>
-      <FlatList
-        data={categories}
-        renderItem={renderCategoryItem}
-        keyExtractor={item => item.id}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.categoriesContainer}
-      />
 
       {/* Your Library */}
       <View style={styles.librarySection}>
@@ -177,33 +168,6 @@ const styles = StyleSheet.create({
     marginLeft: 20,
     marginTop: 20,
     marginBottom: 15,
-  },
-  categoriesContainer: {
-    paddingHorizontal: 15,
-  },
-  categoryCard: {
-    backgroundColor: '#161616',
-    padding: 16,
-    marginHorizontal: 5,
-    borderRadius: 15,
-    alignItems: 'center',
-    width: 100,
-    borderWidth: 1,
-    borderColor: '#222',
-  },
-  categoryIconContainer: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: '#222',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  categoryTitle: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '500',
   },
   librarySection: {
     paddingTop: 5,

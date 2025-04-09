@@ -13,9 +13,11 @@ import {
 import { Audio } from "expo-av";
 import LottieView from "lottie-react-native";
 import { Ionicons } from "@expo/vector-icons";
+import supabase from '../Supabase/SupabaseClient'
 
 const { width } = Dimensions.get("window");
-const backendURL = "http://192.168.105.12:5000";
+const backendURL = "http://192.168.230.12:5000";
+
 
 const FeedbackScreen = ({ route }) => {
   console.log("FeedbackScreen received params:", route.params);
@@ -50,10 +52,12 @@ const FeedbackScreen = ({ route }) => {
       return;
     }
   
+    const audioUri = `https://rrgscadnpzbecaakhfbk.supabase.co/storage/v1/object/public/audio-files/recordings/${audioUrl.replace(/^.*[\\/]/, '')}`;
+  
     try {
-      console.log("Playing audio:", `${backendURL}/recordings/${audioUrl}`);
+      console.log("Playing audio:", audioUri);
       const { sound } = await Audio.Sound.createAsync(
-        { uri: `${backendURL}/recordings/${audioUrl.replace(/^.*[\\/]/, '')}` }, // ✅ Fix file path
+        { uri: audioUri }, // Use Supabase URL
         { shouldPlay: true }
       );
   
@@ -108,6 +112,11 @@ const FeedbackScreen = ({ route }) => {
 
   // Fetch Gemini Feedback
   const fetchGeminiFeedback = async () => {
+    if (!detectedKey || detectedKey === "Unknown") {
+      Alert.alert("Error", "No valid note detected for feedback.");
+      return;
+    }
+  
     try {
       setFeedbackText(""); // Clear previous feedback
       setIsTyping(true);
@@ -142,12 +151,44 @@ const FeedbackScreen = ({ route }) => {
           if (geminiLottieRef.current) geminiLottieRef.current.pause();
         }
       }, 50);
+  
+      // ✅ Get current user
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      const user = userData?.user;
+      
+      if (userError || !user) {
+        console.error("Error retrieving user:", userError);
+        return;
+      }
+  
+      const userEmail = user.email;
+  
+      // ✅ Save to Supabase
+      const { data: insertedData, error: insertError } = await supabase
+        .from('user_library') // ✅ correct table name
+        .insert([
+          {
+            user_email: userEmail,
+            audio_url: audioUrl,
+            musical_key: detectedKey,
+            feedback: data.feedback,
+          },
+        ]);
+  
+      if (insertError) {
+        throw new Error(insertError.message);
+      }
+  
+      console.log("Feedback saved to user_library:", insertedData);
+  
     } catch (error) {
       console.error("Error fetching Gemini feedback:", error);
       setFeedbackText("Error retrieving feedback.");
       setIsTyping(false);
     }
   };
+  
+  
 
   return (
     <View style={styles.safeArea}>

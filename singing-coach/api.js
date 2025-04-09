@@ -1,4 +1,4 @@
-const backendURL = "http://192.168.105.12:5000"; 
+const backendURL = "http://192.168.230.12:5000"; 
 
 export const startRecording = async () => {
   try {

@@ -1,5 +1,4 @@
 from flask import Flask, jsonify, request
-from flask import send_file
 from flask_cors import CORS
 import pyaudio
 import wave
@@ -8,82 +7,67 @@ import os
 import numpy as np
 import time
 import librosa
-import music21
-import webrtcvad  # ✅ Import WebRTC VAD
+import webrtcvad
 import google.generativeai as genai
-import soundfile as sf
+from supabase import create_client, Client
 
-# ✅ Configure Gemini API
+# Set up Supabase credentials
+SUPABASE_URL = 'https://rrgscadnpzbecaakhfbk.supabase.co'
+SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyZ3NjYWRucHpiZWNhYWtoZmJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM0MDQwMzEsImV4cCI6MjA1ODk4MDAzMX0.x-VY-VX6BFu3BueYdq6jnhDPEj6bExDg1Wti7EFpiSw'
+
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+# Configure Gemini API
 genai.configure(api_key="AIzaSyDRmdHNQoqadTc7M8HzjXuLW47Hc-NkJNQ")
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-# 🔹 Audio settings
+# Audio settings
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
-RATE = 16000  # WebRTC VAD works best with 16kHz
-CHUNK = 1024
+RATE = 16000
+CHUNK = 1600  # Adjusted for 10ms VAD compatibility
 OUTPUT_DIR = os.path.abspath(os.path.dirname(__file__))
 recordings = {}
 is_recording = False
 current_note = "..."
-vad = webrtcvad.Vad(1)  # ✅ Aggressiveness level (0-3)
 
+vad = webrtcvad.Vad(1)
 audio = pyaudio.PyAudio()
 
-# ✅ Function to clean up note names
 def clean_note_name(note_name):
-    """Replace invalid characters in note names with correct accidentals."""
     return note_name.replace("~", "-")  # Convert B~3 to B-3 (B-flat 3)
 
-# ✅ Function to detect voice using WebRTC VAD
-def is_voice(data):
-    return vad.is_speech(data, RATE)
-
-# ✅ Function to detect pitch from audio buffer
 def detect_pitch_from_buffer(data):
     global current_note
     try:
-        # Convert byte data to NumPy array
         samples = np.frombuffer(data, dtype=np.int16).astype(np.float32)
-        
-        # Handle zero or silent input
+
         if len(samples) == 0 or np.max(np.abs(samples)) == 0:
             return None
 
-        samples = samples / np.max(np.abs(samples))  # Normalize
+        samples /= np.max(np.abs(samples))
 
-        # Compute fundamental frequency (f0)
-        f0 = librosa.yin(
-            samples, 
-            fmin=librosa.note_to_hz('C2'), 
-            fmax=librosa.note_to_hz('C7'), 
-            sr=RATE  # ✅ Ensure sample rate is used
-        )
-        
-        f0 = f0[f0 > 0]  # Remove unvoiced parts
+        f0 = librosa.yin(samples, fmin=librosa.note_to_hz('C2'),
+                          fmax=librosa.note_to_hz('C7'), sr=RATE)
+        f0 = f0[f0 > 0]  # Remove zero values
+        f0 = f0[~np.isnan(f0)]  # Remove NaN values
+
         if len(f0) == 0:
-            return None  # No valid pitch detected
+            return None
 
-        # Get median pitch to reduce fluctuations
-        median_pitch = np.median(f0)
-
-        # Convert frequency to MIDI and then to note name
+        median_pitch = np.nanmedian(f0)  # Handle NaN values safely
         midi_note = round(librosa.hz_to_midi(median_pitch))
-        detected_note = librosa.midi_to_note(midi_note)
-
-        # Clean the note name format
-        detected_note = clean_note_name(detected_note)
-        current_note = detected_note  # ✅ Ensure global variable updates correctly
+        detected_note = clean_note_name(librosa.midi_to_note(midi_note))
+        
+        current_note = detected_note  # Update current note
         return detected_note
 
     except Exception as e:
         print(f"❌ Error detecting pitch: {e}")
         return None
 
-
-# ✅ Function to record audio
 def record_audio():
     global is_recording, current_note
     timestamp = int(time.time())
@@ -93,25 +77,23 @@ def record_audio():
     stream = audio.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
     frames = []
     is_recording = True
-    print(f"🎤 Recording started: {filename}")
 
     while is_recording:
         try:
             data = stream.read(CHUNK, exception_on_overflow=False)
             if len(data) == 0:
-                continue  # Skip if no audio data
+                continue
 
             frames.append(data)
+
             detected_pitch = detect_pitch_from_buffer(data)
             if detected_pitch:
-                print(f"🎵 Detected Note: {detected_pitch}")  # ✅ Debugging
-                current_note = detected_pitch  # ✅ Update global note
+                current_note = detected_pitch  # Update global note
 
         except Exception as e:
             print(f"❌ Error during recording: {e}")
             break
 
-    print("🛑 Recording stopped.")
     stream.stop_stream()
     time.sleep(0.5)
     stream.close()
@@ -120,116 +102,87 @@ def record_audio():
         print("❌ No audio data captured!")
         return
 
-    # ✅ Save recorded frames properly
     with wave.open(filename, "wb") as wf:
         wf.setnchannels(CHANNELS)
         wf.setsampwidth(audio.get_sample_size(FORMAT))
         wf.setframerate(RATE)
-        wf.writeframes(b''.join(frames))  # 🔹 Ensure all frames are written
+        wf.writeframes(b''.join(frames))
 
-    print(f"✅ Full audio file saved: {filename}")
+def save_and_upload_recording(file_path):
+    try:
+        with open(file_path, 'rb') as file_obj:
+            response = supabase.storage.from_('audio-files').upload(
+                f"recordings/{os.path.basename(file_path)}", file_obj
+            )
 
+            print("🔥 Upload Response:", response)  # Debugging output
 
+            if not response or isinstance(response, dict) and "error" in response:
+                print(f"❌ Upload error: {response}")
+                return None
 
+            # Supabase provides the path, but we need the full URL
+            file_url = f"{SUPABASE_URL}/storage/v1/object/public/audio-files/recordings/{os.path.basename(file_path)}"
+            return file_url
 
+    except Exception as e:
+        print(f"❌ Error uploading file: {e}")
+        return None
 
-# ✅ API Route to start recording
-@app.route("/start_recording", methods=["POST"])
-def start_recording_route():
-    global is_recording
-    if is_recording:
-        return jsonify({"message": "Recording already in progress"}), 400
-    threading.Thread(target=record_audio).start()
-    return jsonify({"message": "Recording started"})
 
 @app.route("/detect_key", methods=["GET"])
 def detect_key():
     return jsonify({"current_note": current_note})
 
-# ✅ Function to extract vocal features
-def extract_vocal_features(data):
-    try:
-        samples = np.frombuffer(data, dtype=np.int16).astype(np.float32)
-        samples = samples / np.max(np.abs(samples))  # Normalize
+@app.route("/start_recording", methods=["POST"])
+def start_recording_route():
+    global is_recording
 
-        f0 = librosa.yin(samples, fmin=librosa.note_to_hz('C2'), fmax=librosa.note_to_hz('C7'))
-        f0 = f0[f0 > 0]  
+    if is_recording:
+        return jsonify({"message": "Recording already in progress"}), 400
 
-        if len(f0) == 0:
-            return {"pitch": None, "stability": "Unknown", "type": "Unknown", "accuracy": "Unknown"}
+    # Delete previous local recording file if it exists
+    latest_file = recordings.get("latest")
+    if latest_file and os.path.exists(latest_file):
+        os.remove(latest_file)  # Remove only locally, Supabase keeps it
+        print(f"🗑 Deleted old recording: {latest_file}")
 
-        median_pitch = np.median(f0)
-        pitch_variation = np.std(f0)  # Standard deviation of pitch
+    threading.Thread(target=record_audio).start()
+    return jsonify({"message": "Recording started"})
 
-        p = music21.pitch.Pitch()
-        p.frequency = median_pitch
-        detected_note = clean_note_name(p.nameWithOctave)  # ✅ Fix note formatting
-
-        expected_pitch = librosa.note_to_hz(detected_note)
-        pitch_accuracy = round(abs(median_pitch - expected_pitch), 2)
-
-        vocal_type = "Singing" if pitch_variation > 10 else "Speaking"
-
-        voice_type = "Soprano" if median_pitch > 349.23 else "Alto" if median_pitch > 261.63 else "Tenor" if median_pitch > 196.00 else "Bass"
-
-        return {
-            "pitch": median_pitch,
-            "note": detected_note,
-            "accuracy": f"{pitch_accuracy} Hz",
-            "stability": "Stable" if pitch_variation < 5 else "Wobbly",
-            "type": vocal_type,
-            "vocal_range": voice_type
-        }
-    except Exception as e:
-        print(f"❌ Error extracting vocal features: {e}")
-        return {"pitch": None, "stability": "Unknown", "type": "Unknown", "accuracy": "Unknown"}
 
 @app.route("/stop_recording", methods=["POST"])
 def stop_recording_route():
     global is_recording
+
     if not is_recording:
+        print("❌ No recording in progress!")  
         return jsonify({"error": "No recording in progress"}), 400
 
-    print("🛑 Stopping recording...")
-    is_recording = False
-
-    # 🕒 Small delay to ensure last audio frames are captured
-    time.sleep(1)  # Try increasing if audio still cuts off
+    is_recording = False  # Stop recording
+    time.sleep(1)  # Allow buffer processing
 
     latest_file = recordings.get("latest")
     if not latest_file or not os.path.exists(latest_file):
+        print(f"❌ Recording file not found: {latest_file}")  
         return jsonify({"error": "No recording found"}), 500
 
-    try:
-        with wave.open(latest_file, "rb") as wf:
-            frames = wf.readframes(wf.getnframes())
-
-        vocal_features = extract_vocal_features(frames)
+    uploaded_url = save_and_upload_recording(latest_file)
+    if uploaded_url:
+        # Remove only local file, Supabase keeps the uploaded one
+        os.remove(latest_file)
+        print(f"🗑 Deleted local recording: {latest_file}")
 
         return jsonify({
-            "message": "Recording stopped",
-            "file": os.path.basename(latest_file),
-            "last_note": vocal_features["note"],
-            "pitch": f"{vocal_features['pitch']} Hz" if vocal_features["pitch"] else "Unknown",
-            "accuracy": vocal_features["accuracy"],
-            "detect_key": vocal_features["note"],
-            "stability": vocal_features["stability"],
-            "type": vocal_features["type"],
-            "vocal_range": vocal_features["vocal_range"]
+            "message": "Recording stopped, uploaded, and deleted locally",
+            "file": uploaded_url,
+            "last_note": current_note
         })
-
-    except Exception as e:
-        print(f"❌ Error processing recording: {e}")
-        return jsonify({"error": f"Error processing recording: {e}"}), 500
-
-    
-@app.route("/recordings/<filename>")
-def get_recording(filename):
-    file_path = os.path.join(OUTPUT_DIR, filename)
-    if os.path.exists(file_path):
-        return send_file(file_path, mimetype="audio/wav")
     else:
-        return jsonify({"error": "File not found"}), 404
+        return jsonify({"error": "Upload failed"}), 500
+
+
+
 
 @app.route("/get_feedback", methods=["POST"])
 def get_feedback():
@@ -240,36 +193,31 @@ def get_feedback():
     vocal_type = data.get("type", "Unknown")
 
     prompt = f"""
-    You are an expert **singing coach** analyzing a singer’s voice.  
-    **Details:**  
-    🎤 **Pitch:** {pitch} Hz  
-    🎶 **Key:** {key}  
-    📈 **Stability:** {stability}  
-    🎭 **Vocal Type:** {vocal_type}  
+    You are an expert singing coach analyzing a singer’s voice.
+    - **Pitch:** {pitch} Hz  
+    - **Key:** {key}  
+    - **Stability:** {stability}  
+    - **Vocal Type:** {vocal_type}  
 
-    **Instructions:**  
-    - Give short, direct feedback on **accuracy, key, and technique**.  
-    - If it's **speaking**, suggest improving by singing.  
-    - Provide **one** tip for better vocal control.  
-    - Keep responses **brief, clear, and motivating**.
+    Instructions:  
+    - Provide **direct** feedback on accuracy, key, and technique.  
+    - If **speaking**, suggest improvement techniques.  
+    - Give **one tip** for better control.
     """
 
     try:
-        model = genai.GenerativeModel("gemini-1.5-flash")  # ✅ Use correct model
+        model = genai.GenerativeModel("gemini-1.5-flash")
         response = model.generate_content(prompt)
 
-        if not response or not hasattr(response, 'text'):
-            return jsonify({"error": "No feedback received from Gemini"}), 500
-
-        feedback_text = response.text.strip()
-        return jsonify({"feedback": feedback_text})
-
+        if response and hasattr(response, "candidates") and response.candidates:
+            feedback_text = response.candidates[0].content.parts[0].text.strip()
+            return jsonify({"feedback": feedback_text})
+        else:
+            return jsonify({"error": "No feedback received"}), 500
     except Exception as e:
-        print(f"❌ Gemini API Error: {e}")  # ✅ Log error for debugging
-        return jsonify({"error": f"Error generating feedback: {str(e)}"}), 500
-
-
-
+        print(f"❌ Gemini API error: {e}")
+        return jsonify({"error": "AI feedback failed"}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
+    

@@ -1,7 +1,6 @@
-import React from "react";
-import {View,Text,Image,StyleSheet,Dimensions,TouchableOpacity, StatusBar} from "react-native";
+import React, { useState } from "react";
+import { View, Text, Image, StyleSheet, Dimensions, TouchableOpacity, StatusBar } from "react-native";
 import Carousel from "react-native-reanimated-carousel";
-
 
 const { width, height } = Dimensions.get("window");
 
@@ -24,55 +23,58 @@ const data = [
 ];
 
 const OnboardingScreen = ({ navigation }) => {
- 
+  const [currentIndex, setCurrentIndex] = useState(0);
+
   return (
-        <View style={styles.container}>
-          <StatusBar backgroundColor="black" />
-          
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={{ color: "#fff", fontSize: 18, fontWeight: "bold" }}></Text>
-            <TouchableOpacity
-              style={styles.button}
-              onPress={() => navigation.navigate("WelcomeScreen")}
-            >
-              <Text style={styles.buttonText}>SKIP</Text>
-            </TouchableOpacity>
+    <View style={styles.container}>
+      <StatusBar backgroundColor="black" />
+
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={{ color: "#fff", fontSize: 18, fontWeight: "bold" }}></Text>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={() => navigation.navigate("WelcomeScreen")}
+        >
+          <Text style={styles.buttonText}>SKIP</Text>
+        </TouchableOpacity>
+      </View>
+
+      
+      <Carousel
+        loop
+        width={width}
+        height={height * 0.8}
+        autoPlay={false}
+        data={data}
+        scrollAnimationDuration={1000}
+        onSnapToItem={(index) => setCurrentIndex(index)}
+        renderItem={({ index }) => (
+          <View style={styles.slide}>
+            <View style={styles.circleContainer}>
+              <Image source={data[index].image} style={styles.image} />
+            </View>
+            <Text style={styles.title}>{data[index].title}</Text>
+            <Text style={styles.description}>{data[index].description}</Text>
           </View>
-    
-          {/* Carousel */}
-          <Carousel
-            loop
-            width={width}
-            height={height}
-            autoPlay={false}
-            data={data}
-            scrollAnimationDuration={1000}
-            renderItem={({ index }) => (
-              <View style={styles.slide}>
-                <View style={styles.circleContainer}>
-                  <Image source={data[index].image} style={styles.image} />
-                </View>
-                <Text style={styles.title}>{data[index].title}</Text>
-                <Text style={styles.description}>{data[index].description}</Text>
-                <View style={styles.progressDots}>
-                  {data.map((_, i) => (
-                    <View
-                      key={i}
-                      style={[
-                        styles.dot,
-                        index === i ? styles.activeDot : styles.inactiveDot
-                      ]}
-                    />
-                  ))}
-                </View>
-              </View>
-            )}
+        )}
+      />
+
+      {/* Dots Indicator */}
+      <View style={styles.progressDots}>
+        {data.map((_, i) => (
+          <View
+            key={i}
+            style={[
+              styles.dot,
+              currentIndex === i ? styles.activeDot : styles.inactiveDot
+            ]}
           />
-        </View>
-      );
-    };
-    
+        ))}
+      </View>
+    </View>
+  );
+};
 
     const styles = StyleSheet.create({
       container: {

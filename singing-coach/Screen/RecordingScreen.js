@@ -11,7 +11,7 @@ const RecordingScreen = ({ navigation }) => {
   const lottieRef = useRef(null);
   const noteInterval = useRef(null);
 
-  const backendURL = "http://192.168.105.12:5000";
+  const backendURL = "http://192.168.230.12:5000";
 
   useEffect(() => {
     return () => {
@@ -19,7 +19,7 @@ const RecordingScreen = ({ navigation }) => {
     };
   }, []);
 
-  // ✅ Fetch Current Note During Recording
+  // Fetch Current Note During Recording
   const fetchCurrentNote = async () => {
     try {
       const note = await getCurrentNote();
@@ -31,14 +31,14 @@ const RecordingScreen = ({ navigation }) => {
   };
   
 
-  // ✅ Start Recording
+  // Start Recording
   const startRecordingHandler = async () => {
     try {
       const result = await startRecording();
       if (result.message === "Recording started") {
         setIsListening(true);
         if (lottieRef.current) lottieRef.current.play();
-        noteInterval.current = setInterval(fetchCurrentNote, 500);  // 🔥 Fetch note every second
+        noteInterval.current = setInterval(fetchCurrentNote, 500);  // Fetch note every second
       } else {
         Alert.alert("Error", "Failed to start recording.");
       }
@@ -48,15 +48,15 @@ const RecordingScreen = ({ navigation }) => {
     }
   };
 
-  // ✅ Stop Recording
-// ✅ Stop Recording
+  // Stop Recording
+// Stop Recording
 const stopRecordingHandler = async () => {
   try {
     const result = await stopRecording();
     if (result.file) {
       setRecordingFile(result.file);
       
-      // ✅ Use the latest fetched note instead of result.last_note
+      //  Use the latest fetched note instead of result.last_note
       setCurrentNote((prevNote) => {
         console.log("Final Detected Note:", prevNote);
         return prevNote; // Ensures last fetched note is used
@@ -65,7 +65,7 @@ const stopRecordingHandler = async () => {
       setIsListening(false);
       if (noteInterval.current) clearInterval(noteInterval.current);
 
-      // ✅ Navigate to FeedbackScreen with the last detected note
+      // Navigate to FeedbackScreen with the last detected note
       setTimeout(() => {
         navigation.navigate("Feedback", {
           audioUrl: `${backendURL}/recordings/${encodeURIComponent(result.file.split('/').pop())}`,
@@ -96,7 +96,7 @@ const stopRecordingHandler = async () => {
 
 export default RecordingScreen;
 
-// ✅ Styles
+// Styles
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#0d0d0d", justifyContent: "center", alignItems: "center" },
   header: { color: "white", fontSize: 24, marginBottom: 20 },

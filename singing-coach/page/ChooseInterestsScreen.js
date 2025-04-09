@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage'; // Add this at the top
+
 
 const ChooseInterestsScreen = ({ navigation }) => {
   const [selectedInterests, setSelectedInterests] = useState([]);
@@ -14,7 +16,6 @@ const ChooseInterestsScreen = ({ navigation }) => {
   const toggleInterest = (interest) => {
     if (selectedInterests.includes(interest)) {
       setSelectedInterests(selectedInterests.filter((item) => item !== interest));
-      
     } else {
       setSelectedInterests([...selectedInterests, interest]);
     }
@@ -30,18 +31,10 @@ const ChooseInterestsScreen = ({ navigation }) => {
         {interests.map((interest, index) => (
           <TouchableOpacity
             key={index}
-            style={[
-              styles.interestButton,
-              selectedInterests.includes(interest) && styles.selectedInterest,
-            ]}
+            style={[styles.interestButton, selectedInterests.includes(interest) && styles.selectedInterest]}
             onPress={() => toggleInterest(interest)}
           >
-            <Text
-              style={[
-                styles.interestText,
-                selectedInterests.includes(interest) && styles.selectedText,
-              ]}
-            >
+            <Text style={[styles.interestText, selectedInterests.includes(interest) && styles.selectedText]}>
               {interest}
             </Text>
           </TouchableOpacity>
@@ -49,13 +42,18 @@ const ChooseInterestsScreen = ({ navigation }) => {
       </ScrollView>
       <TouchableOpacity
         style={styles.nextButton}
-        onPress={() => navigation.navigate('RecordingScreen', { interests: selectedInterests })}
+        onPress={async () => {
+          // Save selected interests to AsyncStorage
+          await AsyncStorage.setItem('selectedInterests', JSON.stringify(selectedInterests));
+          navigation.navigate('TabHolder');
+        }}
       >
         <Text style={styles.nextButtonText}>Next</Text>
       </TouchableOpacity>
     </View>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {
